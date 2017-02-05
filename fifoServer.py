@@ -100,8 +100,10 @@ class Statistician(object):
         arrivals = []
         departs = []
         num = len(self.dataset)
-        for idx in xrange(num):
+        for idx in xrange(num):            
             record = self.dataset[idx]
+            if not record.depart:
+                break
             arrivals.append(record.arrival)
             departs.append(record.depart)
         counter = 0
@@ -119,19 +121,40 @@ class Statistician(object):
                 counter -=1
                 idx2 +=1
                 timeline.append((departs[idx2-1],counter))
+        while(idx1 < num):
+            counter +=1
+            idx1 +=1
+            timeline.append((arrivals[idx1-1],counter))
+        while(idx2 < num):
+            counter -=1
+            idx2 +=1
+            timeline.append((arrivals[idx2-1],counter))
         return timeline
     
     def average_quelen(self,timeline):
+        area = 0
+        for idx in xrange(len(timeline)-1):
+            currtime = timeline[idx][0]
+            nexttime = timeline[idx+1][0]
+            area += (nexttime - currtime)*(max(0,timeline[idx][1]-1))
+        return float(area)/timeline[-1][1]
         
-        
-    def get_proc_utile(self,timeline):
-        
+    def get_idletime(self,timeline):
+        nulltime = 0
+        for idx in xrange(len(timeline)-1):
+            if timeline[idx][1] == 0 or timeline[idx][1] == 1:
+                nulltime+ = timeline[idx][0]+timeline[idx+1][0]
+        return float(nulltime)/timeline[-1][1]
 
     def analyzeUtilizationParams(self):
         timeline = self.get_time_series()
         avg_quelen = self.average_quelen(timeline)
-        processor_utilisation = self.get_proc_util(timeline)
+        processor_idletime = self.get_idletime(timeline)
+        return [avg_quelen, processor_idletime]
     
     def run(self):
         delay_params = self.analyzeDelay()
         count_params = self.analyzeUtilizationParams()
+        stats = delay_params
+        stats.extend(count_params)
+        return stats
