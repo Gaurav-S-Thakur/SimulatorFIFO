@@ -86,15 +86,16 @@ class Statistician(object):
         num = len(self.dataset)
         for index in xrange(num):
             record = self.dataset[index]
+            if not record.depart:
+                break
             servicedelay.append(record.service - record.arrival)
             totaldelay.append(record.depart - record.arrival)
-        min_serv_del = min(servicedelay)
         max_serv_del = max(servicedelay)
         min_tot_del = min(totaldelay)
         max_tot_del = max(totaldelay)
         avg_service_delay = float(sum(servicedelay))/num
         avg_total_delay = float(sum(totaldelay))/num
-        return [min_serv_del, max_serv_del, avg_service_del, min_tot_del, max_tot_del, avg_total_del]
+        return [avg_service_delay, max_serv_del, min_tot_del, avg_total_delay, max_tot_del]
     
     def get_time_series(self):
         arrivals = []
@@ -107,6 +108,7 @@ class Statistician(object):
             arrivals.append(record.arrival)
             departs.append(record.depart)
         counter = 0
+        num = len(arrivals)
         #print "Arrivals:\t"+str(arrivals)
         #print "Departures:\t"+str(departs)
         idx1 = 0
@@ -128,7 +130,7 @@ class Statistician(object):
         while(idx2 < num):
             counter -=1
             idx2 +=1
-            timeline.append((arrivals[idx2-1],counter))
+            timeline.append((departs[idx2-1],counter))
         return timeline
     
     def average_quelen(self,timeline):
@@ -137,14 +139,16 @@ class Statistician(object):
             currtime = timeline[idx][0]
             nexttime = timeline[idx+1][0]
             area += (nexttime - currtime)*(max(0,timeline[idx][1]-1))
-        return float(area)/timeline[-1][1]
+        #print area
+        #print timeline
+        return float(area)/timeline[-1][0]
         
     def get_idletime(self,timeline):
         nulltime = 0
         for idx in xrange(len(timeline)-1):
             if timeline[idx][1] == 0 or timeline[idx][1] == 1:
-                nulltime+ = timeline[idx][0]+timeline[idx+1][0]
-        return float(nulltime)/timeline[-1][1]
+                nulltime += timeline[idx][0]+timeline[idx+1][0]
+        return float(nulltime)/timeline[-1][0]
 
     def analyzeUtilizationParams(self):
         timeline = self.get_time_series()
@@ -152,9 +156,13 @@ class Statistician(object):
         processor_idletime = self.get_idletime(timeline)
         return [avg_quelen, processor_idletime]
     
+    def printstats(self, stats):
+        print "Stats Summary:\nAverage Service Delay: "+str(stats[0])+"\nMaximum Service Delay: "+str(stats[1])+"\nMinimum Total Delay: "+str(stats[2])+"\nAverage Total Delay: "+str(stats[3])+"\nMaximum Total Delay: "+str(stats[4])+"\nProcessor Idle Time: "+str(stats[6])+"\nAverage Queue Length: "+str(stats[5])+"\n-------------------------------------------------------------------\n\n"
+        
     def run(self):
         delay_params = self.analyzeDelay()
         count_params = self.analyzeUtilizationParams()
         stats = delay_params
         stats.extend(count_params)
+        self.printstats(stats)
         return stats
