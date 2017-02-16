@@ -1,26 +1,32 @@
 import matplotlib as plt
 import numpy as np
+import subprocess
 
 from utilities import Calendar
 from utilities import Event_Record
 from utilities import Data_Record
+import randpy
 
-
+    
 class FIFOSimulator(object):
-    def __init__(self,preflag = False):
+    def __init__(self,arr=10, serv=12,seed=1,preflag = False):
         self.isidle = True
         self.process_queue = []
         self.cal = Calendar()
         self.clock = 0
         self.dataset = {}
         self.pre_gen = preflag
-
+        self.arrival_mean = arr
+        self.service_mean = serv
+        self.rand = randpy.RandN(seed)
+        
+        
     def schedule(self, record):
         if not self.pre_gen:
             if record.event_type == "A":
-                record.timestamp = self.clock + int(np.random.normal(10,5))
+                record.timestamp = self.clock + int(self.rand.expon(self.arrival_mean))
             else:
-                record.timestamp = self.clock + int(np.random.normal(12,6))
+                record.timestamp = self.clock + int(self.rand.expon(self.service_mean))
             self.cal.add(record)
             
     def load_calendar(self):
@@ -138,7 +144,8 @@ class Statistician(object):
         for idx in xrange(len(timeline)-1):
             currtime = timeline[idx][0]
             nexttime = timeline[idx+1][0]
-            area += (nexttime - currtime)*(max(0,timeline[idx][1]-1))
+            area += (nexttime - currtime)*(max(0,timeline[idx][1])) #This is num procs in systems
+            #area += (nexttime - currtime)*(max(0,timeline[idx][1]-1)) #This is avg queue len
         #print area
         #print timeline
         return float(area)/timeline[-1][0]
@@ -146,9 +153,10 @@ class Statistician(object):
     def get_idletime(self,timeline):
         nulltime = 0
         for idx in xrange(len(timeline)-1):
-            if timeline[idx][1] == 0 or timeline[idx][1] == 1:
-                nulltime += timeline[idx][0]+timeline[idx+1][0]
-        return float(nulltime)/timeline[-1][0]
+            if timeline[idx][1] == 0:
+                nulltime += (timeline[idx+1][0] - timeline[idx][0])
+        #import pdb; pdb.set_trace()
+        return (float(nulltime)/timeline[-1][0])*100
 
     def analyzeUtilizationParams(self):
         timeline = self.get_time_series()
@@ -166,3 +174,4 @@ class Statistician(object):
         stats.extend(count_params)
         self.printstats(stats)
         return stats
+        
